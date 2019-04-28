@@ -1,17 +1,35 @@
 #compdef abduco
 
-_abduco_sessions() {
-	abduco | tail -n +2 | awk '{print $NF}' | xargs
-}
-
 _arguments \
- 	'-v[Print version information to standard output and exit]' \
+	'-v[Print version information and exit]' \
 	'-r[Readonly session]' \
 	'-e[Set the detach key]:Detach key' \
 	'-f[Force creation of session when is an already terminated session of the same name, after showing its exit status]' \
-	'-l[Attach with the lowest priority]' \
+	'-l[Attach with the lowest priority, this client will control resize]' \
 	-	'(attachOption)' \
-	'-A[Try to connect to an existing session or create/attach to a new one if it does not exist]:session:($(_abduco_sessions))'\
-	'-a[Attach to an existing session]:session:($(_abduco_sessions))' \
-	'-c[Create a new session and attach immediately to it]:session:($(_abduco_sessions))' \
-	'-n[Create a new session and do not attach to it]:session:($(_abduco_sessions))' \
+	'-A[Attach or create]:session:->sessions' \
+	'-a[Attach to an existing session]:session:->sessions' \
+	'-c[Create a new session and attach immediately to it]:session:()' \
+	'-n[Create a new session but do not attach to it]:session:()'
+
+case "$state" in
+	sessions)
+		local abduco_line
+		local -a abduco_sessions
+
+		IFS=$'\n' abduco_sessions=($(while IFS=$'\t' read -r abduco_0 abduco_date abduco_pid abduco_name; do
+			abduco_date=${abduco_date//:/\\:}
+			if [[ $abduco_0 = "* "* ]]; then
+				abduco_postfix=" (attached)"
+			else
+				abduco_postfix=""
+			fi
+			echo "*${abduco_name}[${abduco_date## }${abduco_postfix}]"
+		done < <(abduco | tail -n +2)
+		))
+
+		if (( ${#abduco_sessions[@]} > 0 )); then
+			_values 'sessions' "${abduco_sessions[@]}"
+		fi
+		;;
+esac
